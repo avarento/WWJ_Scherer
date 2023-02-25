@@ -16,6 +16,7 @@ const httpsAgent = new https.Agent({
 let nomeTemp = {};
 let listaTemp = {};
 let msgTemp = {};
+let msgTempTel = {};
 let opcoes = ["s", "n", "f", "m"];
 
   module.exports = {
@@ -25,5 +26,6 @@ let opcoes = ["s", "n", "f", "m"];
     nomeTemp: nomeTemp,
     listaTemp: listaTemp,
     msgTemp: msgTemp,
+    msgTempTel: msgTempTel,
     opcoes: opcoes
   };

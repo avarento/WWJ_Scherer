@@ -7,7 +7,7 @@ const jsdom = require("jsdom");
 const { JSDOM } = jsdom;
 const { formata, tempo, validaString, formataTelefone, buscaRegistro, buscaUsuario, pesquisaScherer, salvaRegistro, salvaUsuario } = require('./scherer_modules/functions');
 const { numeroTelefonista, rangeIncial, rangeFinal } = require('./scherer_modules/settings');
-const { db_registro, db_usuarios, httpsAgent, nomeTemp, listaTemp, msgTemp, opcoes } = require('./scherer_modules/database');
+const { db_registro, db_usuarios, httpsAgent, nomeTemp, listaTemp, msgTemp, msgTempTel, opcoes } = require('./scherer_modules/database');
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const client = new Client({ 
     authStrategy: new LocalAuth(),
@@ -268,9 +268,42 @@ client.on('message', async msg => {
             client.sendMessage(numero, media, {caption: descricao} );
             client.sendMessage(msg.from, `Foto enviada para ${vendedor} com sucesso.`)
         } else {
-            client.sendMessage(msg.from, "Verifique se o nome do vendedor está correto, incluindo possíveis letras maiúsculas, e se o scherer informado está no formato numérico simples. \n\n (exemplo: *foto 19117 _Júnior .S_*)");
+            client.sendMessage(msg.from, "Verifique se o nome do vendedor está correto, incluindo possíveis letras maiúsculas, espaços, e se o scherer informado está no formato numérico simples. \n\n (exemplo: *foto 19117 _Júnior .S_*)");
         }
         }).catch((err) => {console.error(err)});
+    }
+
+    else if (formata(msg.body).startsWith("msg")) {
+        console.log(logsView)
+        let vendedor = msg.body.substring(4).trim();
+        if (msg.from === numeroTelefonista) {
+            buscaUsuario(vendedor).then((row) => {
+                if (row?.numero !== undefined) {
+                    let numero = row.numero + "@c.us";
+                    msgTempTel[msg.from] = {
+                        vendedor: [vendedor],
+                        numero: [numero]
+                    }
+                    client.sendMessage(msg.from, "Qual mensagem deseja enviar?");
+                } else {
+                    client.sendMessage(msg.from, "Verifique se o nome do vendedor está correto, incluindo possíveis letras maiúsculas e espaços.\n\n (exemplo: *msg _Júnior .S_*)");
+                }
+            }).catch((err) => { console.error(err)});
+        } else {
+            client.sendMessage(msg.from, "Este recurso é reservado apenas para usuários específicos da função.")
+        }
+    }
+   
+    else if (msgTempTel[msg.from] !== undefined) {
+        console.log(logsView)
+        if (msg.body.length < 100) {
+            let mensagem = msg.body.trim();
+            client.sendMessage(msgTempTel[msg.from].numero, `*Mensagem recebida:* _${mensagem}_`);
+            client.sendMessage(msg.from, `Mensagem enviada com sucesso para ${msgTempTel[msg.from].vendedor}`);
+            delete msgTempTel[msg.from];
+        } else {
+            client.sendMessage(msg.from, "Sua mensagem excede o limite de caracteres, tente outra.")
+        }        
     }
 
 });
