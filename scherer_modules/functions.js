@@ -1,5 +1,3 @@
-/////////////////////////////////////////////////////   FUNÇÕES   ////////////////////////////////////////////////////////////
-
 const sqlite3 = require('sqlite3');
 const axios = require('axios');
 const https = require('https');
@@ -28,11 +26,15 @@ function tempo(datahora) {
     const data = new Date();
     if (datahora === "data") { 
         return new Intl.DateTimeFormat('pt-BR').format(data);
-    } 
-    else if (datahora === "hora") { 
+    } else if (datahora === "hora") { 
         return new Intl.DateTimeFormat('pt-BR', { hour: 'numeric', minute: 'numeric'}).format(data);
+    } else if (datahora === "ontem") {
+        let ontem = data.setDate(data.getDate() - 1);
+        return new Intl.DateTimeFormat('pt-BR').format(ontem);
+    } else if (datahora === "anteontem") {
+        let anteontem = data.setDate(data.getDate() - 2);
+        return new Intl.DateTimeFormat('pt-BR').format(anteontem);
     }
-
 }
 
 //testa a string com a RegExp que garante apenas letras e algumas variações
@@ -90,34 +92,36 @@ function buscaRegistro(data) {
 
 //retorna o objeto "pesquisa" com as informações da peça se o scherer existir no site
 async function pesquisaScherer(scherer) {
-
     let URL = 'https://www.scherer-sa.com.br/produto/' + scherer;
     const { data } = await axios.get(URL, { httpsAgent });
     const dom = new JSDOM(data);
     const { document } = dom.window
-    var pesquisa = new Object();
-    try {
-        const codigoP = document.querySelector("div> div > div > div > div > p.m-t-20").lastChild.textContent
-        const codigo = codigoP.trim(); //Retirando espaço no final do código da peça, erro do DB_Scherer
-        const descricao = document.querySelector("div > div > div > div > div > p.m-t-5").textContent
-        const imgURL = document.querySelector("div > div > div > div > div > img").src
-                
-        pesquisa.codigo = codigo;
-        pesquisa.scherer = scherer;
-        pesquisa.descricao = descricao;
-        pesquisa.imgURL = imgURL;
-        pesquisa.status = "valido";
-        
-        console.log(pesquisa)
-        return pesquisa;        
-                
-    } catch (error) {
-        pesquisa.erro = "O código Scherer *" + scherer + "* pode não existir, verifique novamente.";
-        pesquisa.status = "invalido";
-        return pesquisa
-    }            
-}
+    const pesquisa = {};
+    pesquisa.codigo = document.querySelector("div> div > div > div > div > p.m-t-20")?.lastChild?.textContent.trim();
+    pesquisa.descricao = document.querySelector("div > div > div > div > div > p.m-t-5")?.textContent
+    pesquisa.imgURL = document.querySelector("div > div > div > div > div > img")?.src
+    pesquisa.updown = (document.querySelector("#wrapper > div > div > div > h1")?.textContent === "Produtos" ? "up" : "down");
+    pesquisa.scherer = scherer;
+    pesquisa.status = "";
 
+    if (pesquisa.updown === "up" && pesquisa.descricao !== undefined) {
+        pesquisa.status = "valido";
+        console.log(pesquisa) 
+        return pesquisa;
+    } else if (pesquisa.updown === "up" && pesquisa.descricao === undefined) {
+        pesquisa.status = "invalido";
+        console.log(pesquisa) 
+        return pesquisa;
+    } else if (pesquisa.updown === "down") {
+        pesquisa.status = updown;
+        console.log(pesquisa) 
+        return pesquisa;
+    } else {
+        pesquisa.status = "error";
+        console.log(pesquisa) 
+        return pesquisa;
+    }        
+}
 
 module.exports = {
     formata: formata,

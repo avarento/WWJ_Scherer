@@ -5,7 +5,9 @@ const https = require('https');
 const fs = require('fs');
 const jsdom = require("jsdom");
 const { JSDOM } = jsdom;
-
+const { formata, tempo, validaString, formataTelefone, buscaRegistro, buscaUsuario, pesquisaScherer, salvaRegistro, salvaUsuario } = require('./scherer_modules/functions');
+const { numeroTelefonista, rangeIncial, rangeFinal } = require('./scherer_modules/settings');
+const { db_registro, db_usuarios, httpsAgent, nomeTemp, listaTemp, msgTemp, opcoes } = require('./scherer_modules/database');
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const client = new Client({ 
     authStrategy: new LocalAuth(),
@@ -20,25 +22,6 @@ const client = new Client({
     },      
 });
 
-
-//Configurações:
-let numeroTelefonista = "555591217925@c.us";  //Quem vai receber a lista de requisições quando tiver um novo pedido de peça
-let rangeIncial = 555533130350;               //Ramais da FISA apartir de 0350
-let rangeFinal = 555533130393;                //Ramais da FISA até 0393
-
-
-
-/////////////////////////////////////////////////////   DB   ////////////////////////////////////////////////////////////
-// Obj para adiconar temporariamente numeros pendentes no cadastro:
-var nomeTemp = {};
-var listaTemp = {};
-var msgTemp = {};
-var opcoes = ["s", "n", "f", "m"];
-
-//Setando recursos do DB sqlite;
-var db_usuarios = new sqlite3.Database('usuarios.db');
-var db_registro = new sqlite3.Database('registro.db');
-
 //Cria tabela "usuarios" com as colunas id, numero e nome, caso não exista                                  
 db_usuarios.serialize(() => {
     db_usuarios.run('CREATE TABLE IF NOT EXISTS usuarios (id INTEGER PRIMARY KEY, numero INTEGER, nome TEXT, data DATA, hora TIME)')
@@ -49,126 +32,7 @@ db_registro.serialize(() => {
     db_registro.run('CREATE TABLE IF NOT EXISTS registro (id INTEGER PRIMARY KEY, tipo TEXT, scherer INT, codigo TEXT, usuario TEXT, numero TEXT, data DATA, hora TIME)')
 })
 
-//Função para salvar dois valores nas colunas numero e nome em usuarios
-async function salvaUsuario(numeroX, nomeX, dataX, horaX){
-    return db_usuarios.run('INSERT INTO usuarios (numero, nome, data, hora) VALUES (?, ?, ?, ?)',[numeroX, nomeX, dataX, horaX]);
-}
-
-//Função para salvar 5 valores nas colunas scherer, codigo, usuario, data e hora em registro
-async function salvaRegistro(tipoX, schererX, codigoX, usuarioX, numeroX, dataX, horaX){
-    return db_registro.run('INSERT INTO registro (tipo, scherer, codigo, usuario, numero, data, hora) VALUES (?, ?, ?, ?, ?, ?, ?)',[tipoX, schererX, codigoX, usuarioX, numeroX, dataX, horaX]);
-}
-
-/////////////////////////////////////////////////////   FUNÇÕES   ////////////////////////////////////////////////////////////
-
-//retorna string com caixa baixa e remove ocasionais espaços no início/final
-function formata(string) {
-    return string.toLowerCase().trim();
-}
-
-//retorna data ou hora no formato necessário
-function tempo(datahora) {
-    const data = new Date();
-    if (datahora === "data") { 
-        return new Intl.DateTimeFormat('pt-BR').format(data);
-    } 
-    else if (datahora === "hora") { 
-        return new Intl.DateTimeFormat('pt-BR', { hour: 'numeric', minute: 'numeric'}).format(data);
-    }
-
-}
-
-//testa a string com a RegExp que garante apenas letras e algumas variações
-function validaString(string) {
-    const regex = /^[a-záäàâãéëèêẽíïìîĩóöòôõúüùũûçĉñ,.' ]+$/gi;
-    return regex.test(string)
-}
-
-//recebe msg.from e o retorna com uma máscara +xx (xx) x xxxx-xxxx
-function formataTelefone(from) { 
-    let numero = (from.includes("@c.us") ? from.replace("@c.us","") : from);
-    if (numero.length == 12) { //"55 55 1234-1234" ou "55 55 1 2345-1234" pela possível existencia de um prefixo 9 (9 8121-8273)
-        let formatado = numero.replace(/^(\d{2})(\d{2})(\d{4})(\d{4})/g, (RegExp, caPais, caRegional, prefixTel, sufixTel) => {
-            return `+${caPais} (${caRegional}) ${prefixTel}-${sufixTel}`;
-        });
-        return formatado;
-    }
-    else if (numero.length == 13) {
-        let formatado = numero.replace(/^(\d{2})(\d{2})(\d{1})(\d{4})(\d{4})/g, (RegExp, caPais, caRegional, prefix, prefixTel, sufixTel) => {
-            return `+${caPais} (${caRegional}) ${prefix}${prefixTel}-${sufixTel}`;
-        });
-        return formatado;
-    } 
-    else {
-        return numero;
-    }   
-}
-
-//retorna em row as informações do nome ou numero [ nota para implementação futura: if (input.includes("@c.us")) {... ]
-function buscaUsuario(input) {
-    return new Promise((resolve, reject) => {
-        let NoN = (isNaN(input) ? 'nome' : 'numero') //NoN Name or Number
-        let userQuery = `SELECT * FROM usuarios WHERE ${NoN} = ?`; //Usei template string pq qnd declarava duas variáveis por "?" não fazia uma requisição correta ¯\_(ツ)_/¯
-        db_usuarios.get(userQuery, [input], (err, row) => {
-            if (err) {
-                reject(err);
-            }
-            resolve(row);
-        });
-        
-    });   
-}   
-
-//retorna um array de objetos das requisições de peça do dia informado no formato xx/xx/xxxx (tempo("data"))
-function buscaRegistro(data) {
-    return new Promise((resolve, reject) => {
-        db_registro.all('SELECT tipo, usuario, scherer, codigo FROM registro WHERE data = ?', [data], (err, rows) => {
-            if(err) {
-                reject(err);
-            }
-            resolve(rows);
-        });
-    });
-}
-
-//retorna o objeto "pesquisa" com as informações da peça se o scherer existir no site
-async function pesquisaScherer(scherer) {
-
-    let URL = 'https://www.scherer-sa.com.br/produto/' + scherer;
-    const { data } = await axios.get(URL, { httpsAgent });
-    const dom = new JSDOM(data);
-    const { document } = dom.window
-    var pesquisa = new Object();
-    try {
-        const codigoP = document.querySelector("div> div > div > div > div > p.m-t-20").lastChild.textContent
-        const codigo = codigoP.trim(); //Retirando espaço no final do código da peça, erro do DB_Scherer
-        const descricao = document.querySelector("div > div > div > div > div > p.m-t-5").textContent
-        const imgURL = document.querySelector("div > div > div > div > div > img").src
-                
-        pesquisa.codigo = codigo;
-        pesquisa.scherer = scherer;
-        pesquisa.descricao = descricao;
-        pesquisa.imgURL = imgURL;
-        pesquisa.status = "valido";
-        
-        console.log(pesquisa)
-        return pesquisa;        
-                
-    } catch (error) {
-        pesquisa.erro = "O código Scherer *" + scherer + "* pode não existir, verifique novamente.";
-        pesquisa.status = "invalido";
-        return pesquisa
-    }            
-}
-       
-//Configuração manual para o Axios aceitar o certificado de segurança do site da Scherer via Https Agent. 
-const httpsAgent = new https.Agent({
-    rejectUnauthorized: false,
-    cert: fs.readFileSync('cert'),
-  });
-
-
-////////////////////////////////////////////// INÍCIO ///////////////////////////////////////////////
+//Main:
 client.on('qr', qr => {
     qrcode.generate(qr, {small: true});
 });
@@ -233,12 +97,12 @@ client.on('message', async msg => {
                         let mensagem = row.nome + ", seu número já possui um registro, você pode requisitar uma peça enviando o código Scherer referente com o comando *#* seguido do código.\n\n   (exemplo: *#19117*)"
                         client.sendMessage(msg.from, mensagem);
                         delete nomeTemp[msg.from];
-                        }
-                    }).catch((err) => {
-                        delete nomeTemp[msg.from];
-                        console.error("ERRO:", err, msg.body, msg.from, ":ERRO");
-                        client.sendMessage(msg.from, "A tentativa de operar na base de dados por número retornou um erro.");
-                    });
+                    }
+                }).catch((err) => {
+                    delete nomeTemp[msg.from];
+                    console.error("ERRO:", err, msg.body, msg.from, ":ERRO");
+                    client.sendMessage(msg.from, "A tentativa de operar na base de dados por número retornou um erro.");
+                });
             } else {
                 client.sendMessage(msg.from, "Esse nome contém caracteres especiais que não são permitidos para registro, tente outro.")
             }       
@@ -248,7 +112,7 @@ client.on('message', async msg => {
     } 
  
     //requerimento de peça por scherer (#19117), retornando as informações na mensagem com opções s/n/f/m e salvando as informações da requisições em listaTemp para na próxima mensagem resolver o destino dessa requisição
-    if (formata(msg.body).startsWith("#")) {
+    else if (formata(msg.body).startsWith("#")) {
         console.log(logsView)
         let scherer = msg.body.split('#')[1]; 
         if (isNaN(scherer) === false && scherer.length <= 9) {
@@ -257,9 +121,13 @@ client.on('message', async msg => {
                     let nome = row.nome;
                     let pesquisa = await pesquisaScherer(scherer);
                     if (pesquisa.status === "invalido") {
-                        client.sendMessage(msg.from, pesquisa.erro);
-                        console.log(pesquisa)
-                    } else {
+                        let mensagem = `O código Scherer *${scherer}* pode não existir, verifique novamente.`;
+                        client.sendMessage(msg.from, mensagem);
+
+                    } else if (pesquisa.status === "down") {
+                        client.sendMessage(msg.from, "Desculpe, o sistema de busca da Scherer em scherer-sa.com.br não está respondendo, portando não possibilita o uso por essa API.")
+
+                    } else if (pesquisa.status === "valido") {
                         let mensagem = `*_Cod Scherer:_* ${pesquisa.scherer} \n\n*_Código da peça:_* ${pesquisa.codigo} \n\n*_Descrição:_* ${pesquisa.descricao} 
                         \n\n*Deseja requisitar esta peça?*\n*(S, N, F, M)*`
                         let chat = await msg.getChat();
@@ -268,6 +136,8 @@ client.on('message', async msg => {
                                 {agent:
                                     httpsAgent // Injetando certificado manualmente para acessar o "db" scherer
                                 } 
+                            }).catch((erroimg) => {
+                                console.erro(erroimg, "erro ao fazer a busca da imagem.")
                             });
                         chat.sendMessage(media, {caption: mensagem});
                         listaTemp[msg.from] = {
@@ -275,7 +145,7 @@ client.on('message', async msg => {
                             scherer: [pesquisa.scherer],
                             cod: [pesquisa.codigo]                    
                         }
-                        console.log(listaTemp[msg.from])    
+                        console.log(listaTemp[msg.from])
                     }
                 } else {
                     client.sendMessage(msg.from, "Você ainda não está registrado no sistema de requisição.\n\nEnvie *cadastrar* para iniciar seu cadastro.")
@@ -354,7 +224,17 @@ client.on('message', async msg => {
     //se msg iniciar com "informe " (com espaço no final) para retornar a lista do dia (no formato xx/xx/xxxx):
     else if (formata(msg.body).startsWith('informe ')) {
         console.log(logsView)
-        let datainforme = formata(msg.body).replace("informe ","");
+        let dia = formata(msg.body).replace("informe ","");
+        let datainforme = "";
+        if (dia === "hoje") {
+            datainforme = tempo("data");
+        } else if (dia === "ontem") {
+            datainforme = tempo("ontem");
+        } else if (dia === "anteontem") {
+            datainforme = tempo("anteontem");
+        } else {
+            datainforme = dia;
+        }
         buscaRegistro(datainforme).then((rows) => {
             let lista = "";
             if (rows.length !== 0) {
@@ -364,11 +244,11 @@ client.on('message', async msg => {
                 });
                 client.sendMessage(msg.from, lista);     
             } else {
-                client.sendMessage(msg.from, "Não existe registros na data informada, verifique se ela está no formato:\n\n*00/00/00*");
+                client.sendMessage(msg.from, "Não existe registros na data informada, verifique se ela está no formato:\n\n*00/00/0000*");
             }
         }).catch((err) => {
             console.error(err)
-            client.sendMessage(msg.from, "Erro ao acessar registro, verifique se a data informada está no formato:\n\n*00/00/00*");
+            client.sendMessage(msg.from, "Erro ao acessar registro, verifique se a data informada está no formato:\n\n*00/00/0000*");
         });
     } 
 
@@ -402,18 +282,3 @@ process.on("SIGINT", async () => {
     })
    
 client.initialize();
-
-
-
-//  https://www.monroe.com.br/catalogo/produtos/codigo-produto?buscaProduto=x
-//  https://www.monroeaxios.com.br/products/cross-reference?crossReference=x
-//  https://api-pioneiro.appspot.com/pub/produto?marca=Nissan
-
- /* //else para baixar list.db
-    else if (msg.body === '!download') {    
-        let chat = await msg.getChat();
-        const media = MessageMedia.fromFilePath('./list.db');
-        chat.sendMessage(media);
-        console.log("Arquivo enviado.")
-        
-    }  */

@@ -18,8 +18,6 @@ let listaTemp = {};
 let msgTemp = {};
 let opcoes = ["s", "n", "f", "m"];
 
-
-
   module.exports = {
     db_registro: db_registro,
     db_usuarios: db_usuarios,
