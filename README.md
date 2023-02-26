@@ -36,7 +36,11 @@ Alguns pontos podem ser discutidos para explicar as vantagem de se aplicar esse 
   <li>A lista de requisições enviada ao auxiliar contem juntamente ao código interno e o nome do vendedor, o código da peça que torna possível se ter 
   uma idéia da natureza dela. (TECFIL PSL545, O prefixo PSL indica um filtro hidráulico de óleo Tecfil que está em uma seção diferente dos filtros de ar
   da mesma marca que contém outros prefixos como ACP, ARS, ARL. Poupando o tempo da busca dessas informações em um computador disponível).
+  <li>O armazenamento dessas requisições pode se tornar alvo de futuras análises de dados para obter informações de peças mais requisitadas, horários e datas  que essas requisiçoes são mais comuns ou além.
+  <li>Possibilita que o auxiliar envie fotografias ou mensagens requisitadas sobre as peças para os vendedores sem a necessidade de gerenciar contatos e várias conversas simultâneas.
+  <li>Com o recebimento das requisições sendo automatizadas, apenas será necessário a execução delas, reduzido assim o trabalho e tempo gasto nessa função pelo auxiliar, trabalho e tempo esses que agora podem ser realocados em outras responsabilidades.
 </ul>
+
 
 
 
