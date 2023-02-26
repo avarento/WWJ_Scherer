@@ -1,7 +1,7 @@
 #!/bin/bash
 pm2 stop 0
 echo "(1/7) - Processo parado"
-sudo npm install -g npm 
+npm install -g npm 
 echo "(2/7) - NPM atualizado"
 
 npm update node
@@ -11,7 +11,7 @@ npm update
 echo "(4/7) - NPM list atualizado"
 
 git add registro.db usuarios.db
-git commit -m "update Registro e Usuarios" && git push master
+git commit -m "update Registro e Usuarios" && git push -u origen master
 echo "(5/7) - Banco de dados salvo"
 
 git pull origen master
