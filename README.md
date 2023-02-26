@@ -29,9 +29,13 @@ Quando uma peça pode se encaixar neste caso, no meio da busca por ela é pergut
 <br><h2>Análise de eficiência</h2>
 Alguns pontos podem ser discutidos para explicar as vantagem de se aplicar esse sistema automatizado sobre o atual:<br>
 <ul>
-  <li>Não depende do telefone não estar em outra ligação ou o aparelho móvel estar em condições para receber a chamada,
+  <li>Independe do telefone não estar em outra ligação ou o aparelho móvel estar em condições para receber a chamada,
   já que o sistema automatizado estará disponível 24h para requisições simultâneas na nuvem.
-  <li>
+  <li>Aplicando os princípios da comunicação efetiva se extingue erros de entendimento nessa conversação. O código é verificado no site e então é
+  retornado uma mensagem de confirmação contendo foto, código interno, código da peça e descrição para tornar a requisição acertiva.
+  <li>A lista de requisições enviada ao auxiliar contem juntamente ao código interno e o nome do vendedor, o código da peça que torna possível se ter 
+  uma idéia da natureza dela. (TECFIL PSL545, O prefixo PSL indica um filtro hidráulico de óleo Tecfil que está em uma seção diferente dos filtros de ar
+  da mesma marca que contém outros prefixos como ACP, ARS, ARL. Poupando o tempo da busca dessas informações em um computador disponível).
 </ul>
 
 
