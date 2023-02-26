@@ -1,13 +1,24 @@
 #!/bin/bash
 pm2 stop 0
-echo "(1/6) - Processo parado"
+echo "(1/7) - Processo parado"
+
 npm install -g npm 
-echo "(2/6) - NPM atualizado"
+echo "(2/7) - NPM atualizado"
+
 npm update node
-echo "(3/6) - Node atualizado"
+echo "(3/7) - Node atualizado"
+
 npm update
-echo "(4/6) - NPM list atualizado"
+echo "(4/7) - NPM list atualizado"
+
+git add registro.db usuarios.db
+git commit -m "update Registro e Usuarios" && git push origen
+echo "(5/7) - Banco de dados salvo"
+
 git pull origen master
-echo "(5/6) - Repositório Atualizado"
+echo "(6/7) - Repositório atualizado"
+
 pm2 start index
-echo "(6/6) - Processo iniciado"
+echo "(7/7) - Processo iniciado"
+
+
