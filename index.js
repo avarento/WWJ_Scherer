@@ -12,8 +12,8 @@ const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const client = new Client({ 
     authStrategy: new LocalAuth(),
     puppeteer: { 
-    // product: "chrome",   (product e executablePath apenas configurações para o servidor AWS.)
-    // executablePath: "/usr/bin/chromium-browser",
+     product: "chrome",   //(product e executablePath apenas configurações para o servidor AWS.)
+     executablePath: "/usr/bin/chromium-browser",
     headless: true,
     handleSIGINT: false,
     args: [
