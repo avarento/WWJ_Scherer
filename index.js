@@ -83,7 +83,7 @@ client.on('message', async msg => {
                             if (row?.nome !== undefined) {
                                 client.sendMessage(msg.from, "Esse nome já está em uso, tente outro.")
                             } else {
-                                let mensagem = `Bem vindo *${nome}*, para requisitar uma peça envie o código Scherer referente com o comando *#* seguido do código.\n\n   (exemplo: *#19117*)`;
+                                let mensagem = `Bem vindo *${nome}*, para requisitar uma peça envie o código scherer referente com o comando *#* seguido do código.\n\n   (exemplo: *#19117*)`;
                                 salvaUsuario(numero, nome, tempo("data"), tempo("hora"));
                                 delete nomeTemp[msg.from];
                                 client.sendMessage(msg.from, mensagem);  
