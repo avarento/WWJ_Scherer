@@ -2,7 +2,7 @@
 pm2 stop 0
 echo "(1/7) - Processo parado"
 
-npm install -g npm 
+sudo npm install -g npm 
 echo "(2/7) - NPM atualizado"
 
 npm update node
