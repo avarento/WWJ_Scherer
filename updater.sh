@@ -12,7 +12,7 @@ npm update
 echo "(4/7) - NPM list atualizado"
 
 git add registro.db usuarios.db
-git commit -m "update Registro e Usuarios" && git push origen
+git commit -m "update Registro e Usuarios" && git push
 echo "(5/7) - Banco de dados salvo"
 
 git pull origen master
