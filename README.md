@@ -17,7 +17,6 @@ levar a peça. Essa função pode ser descrita no seguinte processo:
   (requisições essas que podem ser usadas para análise pelo motivo descrito posteriormente)
   <li>Se necessário verificar a existência do código informado, sua localização ou outra informação da peça em um computador disponível. 
 </ul>
-<br>
 <b>Nota:</b><br>
 [Após a análise feita pelo vendedor, a peça é deixada em uma caixa para que o auxiliar responsável, com o conhecimento
 dos processos de armazenagem que estão sempre sendo atualizados para otimizar espaço e organização, faça novamente o armazenamento destas peças sempre
@@ -33,14 +32,12 @@ Alguns pontos podem ser discutidos para explicar as vantagem de se aplicar esse 
   já que o sistema automatizado estará disponível 24h para requisições simultâneas na nuvem.
   <li>Aplicando os princípios da comunicação efetiva se extingue erros de entendimento nessa conversação. O código é verificado no site e então é
   retornado uma mensagem de confirmação contendo foto, código interno, código da peça e descrição para tornar a requisição acertiva.
-  <li>A lista de requisições enviada ao auxiliar contem juntamente ao código interno e o nome do vendedor, o código da peça que torna possível se ter 
+  <li>A lista de requisições enviada ao auxiliar contém juntamente ao código interno e o nome do vendedor, o código da peça que torna possível se ter 
   uma idéia da natureza dela. (TECFIL PSL545, O prefixo PSL indica um filtro hidráulico de óleo Tecfil que está em uma seção diferente dos filtros de ar
-  da mesma marca que contém outros prefixos como ACP, ARS, ARL. Poupando o tempo da busca dessas informações em um computador disponível).
+  da mesma marca que contêm outros prefixos como ACP, ARS, ARL. Poupando o tempo da busca dessas informações em um computador disponível).
   <li>O armazenamento dessas requisições pode se tornar alvo de futuras análises de dados para obter informações de peças mais requisitadas, horários e datas  que essas requisiçoes são mais comuns ou além.
   <li>Possibilita que o auxiliar envie fotografias ou mensagens requisitadas sobre as peças para os vendedores sem a necessidade de gerenciar contatos e várias conversas simultâneas.
   <li>Com o recebimento das requisições sendo automatizadas, apenas será necessário a execução delas, reduzido assim o trabalho e tempo gasto nessa função pelo auxiliar, trabalho e tempo esses que agora podem ser realocados em outras responsabilidades.
 </ul>
-
-
-
-
+<h2>Comandos de uso</h2>
+tabela
