@@ -66,7 +66,7 @@ function formataTelefone(from) {
 //retorna em row as informações do nome ou numero [ nota para implementação futura: if (input.includes("@c.us")) {... ]
 function buscaUsuario(input) {
     return new Promise((resolve, reject) => {
-        let NoN = (isNaN(input) ? 'nome' : 'numero') //NoN Name or Number
+        let NoN = (Number.isNaN(input) ? 'nome' : 'numero') //NoN Name or Number
         let userQuery = `SELECT * FROM usuarios WHERE ${NoN} = ?`; //Usei template string pq qnd declarava duas variáveis por "?" não fazia uma requisição correta ¯\_(ツ)_/¯
         db_usuarios.get(userQuery, [input], (err, row) => {
             if (err) {
@@ -113,7 +113,7 @@ async function pesquisaScherer(scherer) {
         console.log(pesquisa) 
         return pesquisa;
     } else if (pesquisa.updown === "down") {
-        pesquisa.status = updown;
+        pesquisa.status = pesquisa.updown;
         console.log(pesquisa) 
         return pesquisa;
     } else {

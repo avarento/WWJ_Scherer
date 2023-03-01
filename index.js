@@ -115,37 +115,40 @@ client.on('message', async msg => {
     else if (formata(msg.body).startsWith("#")) {
         console.log(logsView)
         let scherer = msg.body.split('#')[1]; 
-        if (isNaN(scherer) === false && scherer.length <= 9) {
+        if (Number.isNaN(scherer) === false && scherer.length <= 9) {
             buscaUsuario(msg.from.replace("@c.us", "")).then(async (row) => {
                 if (row?.nome !== undefined) {
                     let nome = row.nome;
-                    let pesquisa = await pesquisaScherer(scherer);
-                    if (pesquisa.status === "invalido") {
-                        let mensagem = `O código Scherer *${scherer}* pode não existir, verifique novamente.`;
-                        client.sendMessage(msg.from, mensagem);
+                    try {
+                        let pesquisa = await pesquisaScherer(scherer);
+                        if (pesquisa.status === "invalido") {
+                            let mensagem = `O código Scherer *${scherer}* pode não existir, verifique novamente.`;
+                            client.sendMessage(msg.from, mensagem);
 
-                    } else if (pesquisa.status === "down") {
-                        client.sendMessage(msg.from, "Desculpe, o sistema de busca da Scherer em scherer-sa.com.br não está respondendo, portando não possibilita o uso por essa API.")
+                        } else if (pesquisa.status === "down") {
+                            client.sendMessage(msg.from, "Desculpe, o sistema de busca da Scherer em scherer-sa.com.br não está respondendo, portando não possibilita o uso por essa API.")
 
-                    } else if (pesquisa.status === "valido") {
-                        let mensagem = `*_Cod Scherer:_* ${pesquisa.scherer} \n\n*_Código da peça:_* ${pesquisa.codigo} \n\n*_Descrição:_* ${pesquisa.descricao} 
-                        \n\n*Deseja requisitar esta peça?*\n*(S, N, F, M)*`
-                        let chat = await msg.getChat();
-                        const media = await MessageMedia.fromUrl(pesquisa.imgURL, 
+                        } else if (pesquisa.status === "valido") {
+                            let mensagem = `*_Cod Scherer:_* ${pesquisa.scherer} \n\n*_Código da peça:_* ${pesquisa.codigo} \n\n*_Descrição:_* ${pesquisa.descricao} 
+                            \n\n*Deseja requisitar esta peça?*\n*(S, N, F, M)*`
+                            let chat = await msg.getChat();
+                            const media = await MessageMedia.fromUrl(pesquisa.imgURL, 
                             {reqOptions:
                                 {agent:
                                     httpsAgent // Injetando certificado manualmente para acessar o "db" scherer
                                 } 
-                            }).catch((erroimg) => {
-                                console.erro(erroimg, "erro ao fazer a busca da imagem.")
-                            });
-                        chat.sendMessage(media, {caption: mensagem});
-                        listaTemp[msg.from] = {
-                            usuario: [nome],
-                            scherer: [pesquisa.scherer],
-                            cod: [pesquisa.codigo]                    
+                            }).catch((erroimg) => { console.erro(erroimg, "erro ao fazer a busca da imagem.")});
+                            chat.sendMessage(media, {caption: mensagem});
+                            listaTemp[msg.from] = {
+                                usuario: [nome],
+                                scherer: [pesquisa.scherer],
+                                cod: [pesquisa.codigo]                    
+                            }
+                            console.log(listaTemp[msg.from])
                         }
-                        console.log(listaTemp[msg.from])
+                    } catch (error) {
+                        console.error("ERRO PESQUISA SCHERER", error)
+                        client.sendMessage(msg.from, "Desculpe, o sistema de busca da Scherer em scherer-sa.com.br não está respondendo, portando não possibilita o uso por essa API.")
                     }
                 } else {
                     client.sendMessage(msg.from, "Você ainda não está registrado no sistema de requisição.\n\nEnvie *cadastrar* para iniciar seu cadastro.")
@@ -261,7 +264,7 @@ client.on('message', async msg => {
         let scherer = mensagem[0];
         let vendedor = msg.body.substring(5).trim().replace(scherer, "").trim();
         buscaUsuario(vendedor).then(async (row) => {
-        if (row?.numero !== undefined && isNaN(scherer) === false) {
+        if (row?.numero !== undefined && Number.isNaN(scherer) === false) {
             let numero = row.numero + "@c.us";
             const media = await msg.downloadMedia();
             let descricao = `Foto requerida do scherer ${scherer}`;
