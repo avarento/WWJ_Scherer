@@ -23,7 +23,8 @@ function formata(string) {
 
 //retorna data ou hora no formato necessário
 function tempo(datahora) {
-    const data = new Date();
+    const dataServer = new Date();
+    const data =  dataServer.setDate(dataServer.getHours() - 3);
     if (datahora === "data") { 
         return new Intl.DateTimeFormat('pt-BR').format(data);
     } else if (datahora === "hora") { 
