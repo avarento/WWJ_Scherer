@@ -5,15 +5,15 @@ const https = require('https');
 const fs = require('fs');
 const jsdom = require("jsdom");
 const { JSDOM } = jsdom;
-const { formata, tempo, validaString, formataTelefone, buscaRegistro, buscaUsuario, pesquisaScherer, salvaRegistro, salvaUsuario } = require('./scherer_modules/functions');
+const { formata, tempo, validaString, formataTelefone, buscaRegistro, buscaRegistroPorScherer, buscaUsuario, pesquisaScherer, salvaRegistro, salvaUsuario } = require('./scherer_modules/functions');
 const { numeroTelefonista, rangeIncial, rangeFinal } = require('./scherer_modules/settings');
 const { db_registro, db_usuarios, httpsAgent, nomeTemp, listaTemp, msgTemp, msgTempTel, opcoes } = require('./scherer_modules/database');
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const client = new Client({ 
     authStrategy: new LocalAuth(),
     puppeteer: { 
-     product: "chrome",   //(product e executablePath apenas configurações para o servidor AWS.)
-     executablePath: "/usr/bin/chromium-browser",
+     //product: "chrome",   //(product e executablePath apenas configurações para o servidor AWS.)
+     //executablePath: "/usr/bin/chromium-browser",
     headless: true,
     handleSIGINT: false,
     args: [
@@ -32,6 +32,7 @@ db_registro.serialize(() => {
     db_registro.run('CREATE TABLE IF NOT EXISTS registro (id INTEGER PRIMARY KEY, tipo TEXT, scherer INT, codigo TEXT, usuario TEXT, numero TEXT, data DATA, hora TIME)')
 })
 
+
 //Main:
 client.on('qr', qr => {
     qrcode.generate(qr, {small: true});
@@ -47,7 +48,7 @@ client.on('message', async msg => {
     var logsView = `LOG: ${tempo("data")} ${tempo("hora")} MSG: ${msg.body} DE: ${formataTelefone(msg.from)} TIPO: ${msg.deviceType}`;
 
     //cadastrar >>> mensagem de boas vindas pedindo um nome para registro. Salva pendência em nomeTemp para aguardar nome na próxima mensagem
-    if (formata(msg.body) === 'cadastrar') {
+    if (formata(msg.body) === 'cadastrar' && msg.author === undefined) {
         console.log(logsView)
         let numero = msg.from.replace("@c.us", "");
         if (numero <= rangeFinal && numero >= rangeIncial) { //Se o numero estiver dentro do range de ramais usando na FISA
@@ -62,7 +63,7 @@ client.on('message', async msg => {
     }
 
     //sudocadastrar >>> registro sem requisitos. Adiciona pendência em nomeTemp mesmo fora do range de ramais.
-    else if (formata(msg.body) === 'sudocadastrar') {
+    else if (formata(msg.body) === 'sudocadastrar' && msg.author === undefined) {
         console.log(logsView)        
         nomeTemp[msg.from] = 0;             
         let numero = formataTelefone(msg.from);        
@@ -71,7 +72,7 @@ client.on('message', async msg => {
     }
 
     //gatilho para receber o nome de usuario enviado após "cadastrar" (etapas: valida regexp, verifica se existe registro no numero, depois se existe esse nome em outro numero)
-    else if (nomeTemp[msg.from] === 0) {
+    else if (nomeTemp[msg.from] === 0 && msg.author === undefined) {
         console.log(logsView)
         let numero = msg.from.replace("@c.us","");
         let nome = msg.body.trim();    
@@ -112,17 +113,18 @@ client.on('message', async msg => {
     } 
  
     //requerimento de peça por scherer (#19117), retornando as informações na mensagem com opções s/n/f/m e salvando as informações da requisições em listaTemp para na próxima mensagem resolver o destino dessa requisição
-    else if (formata(msg.body).startsWith("#")) {
+    else if (formata(msg.body).startsWith("#") && msg.author === undefined) {
         console.log(logsView)
         let scherer = msg.body.split('#')[1]; 
-        if (Number.isNaN(scherer) === false && scherer.length <= 9) {
+        console.log(scherer)
+        if (isNaN(scherer) === false && scherer.length <= 9 && scherer.includes("#") === false && scherer !== "") {
             buscaUsuario(msg.from.replace("@c.us", "")).then(async (row) => {
                 if (row?.nome !== undefined) {
                     let nome = row.nome;
                     try {
                         let pesquisa = await pesquisaScherer(scherer);
                         if (pesquisa.status === "invalido") {
-                            let mensagem = `O código Scherer *${scherer}* pode não existir, verifique novamente.`;
+                            let mensagem = `O código scherer *${scherer}* pode não existir, verifique novamente.`;
                             client.sendMessage(msg.from, mensagem);
 
                         } else if (pesquisa.status === "down") {
@@ -147,7 +149,7 @@ client.on('message', async msg => {
                             console.log(listaTemp[msg.from])
                         }
                     } catch (error) {
-                        console.error("ERRO PESQUISA SCHERER", error)
+                        console.error("ERRO PESQUISA SCHERER", error.AxiosError, error.code)
                         client.sendMessage(msg.from, "Desculpe, o sistema de busca da Scherer em scherer-sa.com.br não está respondendo, portando não possibilita o uso por essa API.")
                     }
                 } else {
@@ -160,14 +162,14 @@ client.on('message', async msg => {
     }
 
     //gatilho para ouvir a opção do requerimento (S/N/F/M) em listaTemp
-    else if (opcoes.includes(formata(msg.body)) && listaTemp[msg.from] !== undefined) {
+    else if (opcoes.includes(formata(msg.body)) && listaTemp[msg.from] !== undefined && msg.author === undefined) {
         let opcao = formata(msg.body);
         if (opcao === "s") { //Adiciona a lista do telefonista
             console.log(logsView)
             salvaRegistro("⚙️", listaTemp[msg.from].scherer, listaTemp[msg.from].cod, listaTemp[msg.from].usuario, formataTelefone(msg.from), tempo("data"), tempo("hora")).catch((erro) => console.error(erro));
             client.sendMessage(msg.from, "Peça requisitada com sucesso.");
             buscaRegistro(tempo("data")).then((rows) => {
-                var lista = "";
+                var lista = "📥 _*Lista de requisição*_ 📤\n\n";
                 rows.forEach(obj => {
                     let mensagem = `${obj.tipo} *${obj.scherer}* *_${obj.usuario}_*\n${obj.codigo}\n\n`;
                     lista = lista + mensagem;   
@@ -186,7 +188,7 @@ client.on('message', async msg => {
             salvaRegistro("📷", listaTemp[msg.from].scherer, listaTemp[msg.from].cod, listaTemp[msg.from].usuario, formataTelefone(msg.from), tempo("data"), tempo("hora")).catch((erro) => console.error(erro));
             client.sendMessage(msg.from, "Foto requisitada com sucesso.");
             buscaRegistro(tempo("data")).then((rows) => {
-                var lista = "";
+                var lista = "📥 _*Lista de requisição*_ 📤\n\n";
                 rows.forEach(obj => {
                     let mensagem = `${obj.tipo} *${obj.scherer}* *_${obj.usuario}_*\n${obj.codigo}\n\n`;
                     lista = lista + mensagem;   
@@ -203,14 +205,14 @@ client.on('message', async msg => {
     }
         
     //gatilho para salvar a mensagem recebida se estiver com pendência no objeto msgTemp caso a opção tiver sido "m" (mensagem)
-    else if (msgTemp[msg.from] !== undefined) {
+    else if (msgTemp[msg.from] !== undefined && msg.author === undefined) {
         console.log(logsView)
         if (msg.body.length < 100) {
             salvaRegistro("✉️", listaTemp[msg.from].scherer, msg.body.trim(), listaTemp[msg.from].usuario, formataTelefone(msg.from), tempo("data"), tempo("hora")).catch((erro) => console.error(erro));
             client.sendMessage(msg.from, "Mensagem enviada em anexo ao scherer com sucesso.");
             delete msgTemp[msg.from];
             buscaRegistro(tempo("data")).then((rows) => {
-            let lista = "";
+            let lista = "📥 _*Lista de requisição*_ 📤\n\n";
             rows.forEach(obj => {
                 let mensagem = `${obj.tipo} *${obj.scherer}* *_${obj.usuario}_*\n${obj.codigo}\n\n`;
                 lista = lista + mensagem;   
@@ -225,7 +227,7 @@ client.on('message', async msg => {
     }
 
     //se msg iniciar com "informe " (com espaço no final) para retornar a lista do dia (no formato xx/xx/xxxx):
-    else if (formata(msg.body).startsWith('informe ')) {
+    else if (formata(msg.body).startsWith('informe ') && msg.author === undefined) {
         console.log(logsView)
         let dia = formata(msg.body).replace("informe ","");
         let datainforme = "";
@@ -236,47 +238,61 @@ client.on('message', async msg => {
         } else if (dia === "anteontem") {
             datainforme = tempo("anteontem");
         } else {
-            datainforme = dia;
-        }
-        buscaRegistro(datainforme).then((rows) => {
-            let lista = "";
-            if (rows.length !== 0) {
-                rows.forEach(obj => {
-                    let mensagem = `${obj.tipo} *${obj.scherer}* *_${obj.usuario}_*\n${obj.codigo}\n\n`;
-                    lista = lista + mensagem;   
-                });
-                client.sendMessage(msg.from, lista);     
-            } else {
-                client.sendMessage(msg.from, "Não existe registros na data informada, verifique se ela está no formato:\n\n*00/00/0000*");
+            const validaData = (data) => {
+                let date = new Date(data);
+                return !isNaN(date.getTime());
             }
-        }).catch((err) => {
-            console.error(err)
-            client.sendMessage(msg.from, "Erro ao acessar registro, verifique se a data informada está no formato:\n\n*00/00/0000*");
-        });
+            datainforme = validaData(dia) ? dia : "invalido"; 
+        }
+        if (datainforme !== "invalido") {
+            buscaRegistro(datainforme).then((rows) => {
+                let lista = "📥 _*Lista de requisição*_ 📤\n\n";
+                console.log(rows)
+                if (rows.length !== 0) {
+                    rows.forEach(obj => {
+                        let mensagem = `${obj.tipo} *${obj.scherer}* *_${obj.usuario}_*\n${obj.codigo}\n\n`;
+                        lista = lista + mensagem;   
+                    });
+                    client.sendMessage(msg.from, lista);     
+                } else {
+                    client.sendMessage(msg.from, "Não existe registros na data informada.");
+                }
+            }).catch((err) => {
+                console.error(err)
+                client.sendMessage(msg.from, "Erro ao acessar registro, verifique se a data informada está no formato:\n\n*dd/mm/aaaa*");
+            });
+        } else {
+            client.sendMessage(msg.from, "Verifique se a data informada está no formato:\n\n*dd/mm/aaaa*");
+
+        }
     } 
 
     //foto scherer vendedor >>> comando na descrição da mensagem para enviar a foto para o vendedor informando o scherer da peça 
-    else if (msg.body.trim().startsWith("foto ") && msg.hasMedia || msg.body.trim().startsWith("Foto ") && msg.hasMedia) { 
+    else if (msg.body.trim().startsWith("foto ") && msg.hasMedia && msg.author === undefined || msg.body.trim().startsWith("Foto ") && msg.hasMedia && msg.author === undefined) { 
         console.log(logsView)
-        //forma de receber foto ou Foto sem alterar o nome recebido que é case sensetive
-        // Foto 19117 Gustavo S    |   foto 19117 Gustavo S
-        let mensagem = msg.body.substring(5).trim().split(" "); 
-        let scherer = mensagem[0];
-        let vendedor = msg.body.substring(5).trim().replace(scherer, "").trim();
-        buscaUsuario(vendedor).then(async (row) => {
-        if (row?.numero !== undefined && Number.isNaN(scherer) === false) {
-            let numero = row.numero + "@c.us";
-            const media = await msg.downloadMedia();
-            let descricao = `Foto requerida do scherer ${scherer}`;
-            client.sendMessage(numero, media, {caption: descricao} );
-            client.sendMessage(msg.from, `Foto enviada para ${vendedor} com sucesso.`)
+        if (msg.from === numeroTelefonista) {
+            //forma de receber foto ou Foto sem alterar o nome recebido que é case sensetive
+            // Foto 19117 Gustavo S    |   foto 19117 Gustavo S
+            let mensagem = msg.body.substring(5).trim().split(" "); 
+            let scherer = mensagem[0];
+            let vendedor = msg.body.substring(5).trim().replace(scherer, "").trim();
+            buscaUsuario(vendedor).then(async (row) => {
+                if (row?.numero !== undefined && isNaN(scherer) === false) {
+                    let numero = row.numero + "@c.us";
+                    const media = await msg.downloadMedia();
+                    let descricao = `Foto requerida do scherer ${scherer}`;
+                    client.sendMessage(numero, media, {caption: descricao} );
+                    client.sendMessage(msg.from, `Foto enviada para ${vendedor} com sucesso.`)
+                } else {
+                    client.sendMessage(msg.from, "Verifique se o nome do vendedor está correto, incluindo possíveis letras maiúsculas, espaços, e se o scherer informado está no formato numérico simples. \n\n (exemplo: *foto 19117 _Júnior .S_*)");
+                }
+            }).catch((err) => {console.error(err)});        
         } else {
-            client.sendMessage(msg.from, "Verifique se o nome do vendedor está correto, incluindo possíveis letras maiúsculas, espaços, e se o scherer informado está no formato numérico simples. \n\n (exemplo: *foto 19117 _Júnior .S_*)");
+            client.sendMessage(msg.from, "Este recurso é reservado apenas para usuários específicos da função.")
         }
-        }).catch((err) => {console.error(err)});
     }
 
-    else if (formata(msg.body).startsWith("msg")) {
+    else if (formata(msg.body).startsWith("msg ") && msg.author === undefined) {
         console.log(logsView)
         let vendedor = msg.body.substring(4).trim();
         if (msg.from === numeroTelefonista) {
@@ -297,7 +313,7 @@ client.on('message', async msg => {
         }
     }
    
-    else if (msgTempTel[msg.from] !== undefined) {
+    else if (msgTempTel[msg.from] !== undefined && msg.author === undefined) {
         console.log(logsView)
         if (msg.body.length < 100) {
             let mensagem = msg.body.trim();
@@ -308,9 +324,28 @@ client.on('message', async msg => {
             client.sendMessage(msg.from, "Sua mensagem excede o limite de caracteres, tente outra.")
         }        
     }
+    
+    else if (formata(msg.body).startsWith("busque ") && msg.author === undefined) {
+        let scherer = formata(msg.body).substring(7);
+        console.log(scherer)
+        buscaRegistroPorScherer(scherer).then((rows) => {
+            let lista = "📄 _*Últimas requisições:*_ 📄\n\n";
+            console.log(rows)
+            if (rows.length !== 0) {
+                rows.forEach(obj => {
+                    let mensagem = `*${obj.usuario}* _${obj.data} ${obj.hora}_\n\n`;
+                    lista = lista + mensagem;   
+                });
+                client.sendMessage(msg.from, lista);     
+            } else {
+                client.sendMessage(msg.from, "Não existe registros do scherer informado.");
+            }
+        }).catch((err) => { console.error(err)});  
+    }
+
 
 });
-   
+
 process.on("SIGINT", async () => {
     console.log("(SIGINT) Encerrando cliente...");
     await client.destroy();

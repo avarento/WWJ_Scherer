@@ -90,6 +90,18 @@ function buscaRegistro(data) {
     });
 }
 
+//retorna um array de objetos das requisições de peça do dia informado no formato xx/xx/xxxx (tempo("data"))
+function buscaRegistroPorScherer(scherer) {
+    return new Promise((resolve, reject) => {
+        db_registro.all('SELECT * FROM registro WHERE scherer = ?', [scherer], (err, rows) => {
+            if(err) {
+                reject(err);
+            }
+            resolve(rows);
+        });
+    });
+}
+
 //retorna o objeto "pesquisa" com as informações da peça se o scherer existir no site
 async function pesquisaScherer(scherer) {
     let URL = 'https://www.scherer-sa.com.br/produto/' + scherer;
@@ -128,7 +140,8 @@ module.exports = {
     tempo: tempo, 
     validaString: validaString,
     formataTelefone: formataTelefone, 
-    buscaRegistro: buscaRegistro, 
+    buscaRegistro: buscaRegistro,
+    buscaRegistroPorScherer: buscaRegistroPorScherer, 
     buscaUsuario: buscaUsuario, 
     pesquisaScherer: pesquisaScherer,
     salvaUsuario: salvaUsuario,
