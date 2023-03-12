@@ -5,15 +5,15 @@ const https = require('https');
 const fs = require('fs');
 const jsdom = require("jsdom");
 const { JSDOM } = jsdom;
-const { formata, tempo, validaString, formataTelefone, buscaRegistro, buscaRegistroPorScherer, buscaUsuario, pesquisaScherer, salvaRegistro, salvaUsuario } = require('./scherer_modules/functions');
-const { numeroTelefonista, rangeIncial, rangeFinal } = require('./scherer_modules/settings');
-const { db_registro, db_usuarios, httpsAgent, nomeTemp, listaTemp, msgTemp, msgTempTel, opcoes } = require('./scherer_modules/database');
+const { contato, formata, tempo, validaString, formataTelefone, buscaRegistro, buscaRegistroPorScherer, buscaUsuario, pesquisaScherer, salvaRegistro, salvaUsuario, salvaConfig, buscaConfig, alteraConfig, buscaAllConfigs } = require('./scherer_modules/functions');
+const { numeroTelefonista, rangeIncial, rangeFinal } = require('./scherer_modules/settings'); //ENCERRAR
+const { db_registro, db_usuarios, db_config, httpsAgent, nomeTemp, listaTemp, msgTemp, msgTempTel, opcoes } = require('./scherer_modules/database');
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const client = new Client({ 
     authStrategy: new LocalAuth(),
     puppeteer: { 
-    product: "chrome",   //(product e executablePath apenas configurações para o servidor AWS.)
-    executablePath: "/usr/bin/chromium-browser",
+    //product: "chrome",   //(product e executablePath apenas configurações para o servidor AWS.)
+    //executablePath: "/usr/bin/chromium-browser",
     headless: true,
     handleSIGINT: false,
     args: [
@@ -31,6 +31,51 @@ db_usuarios.serialize(() => {
 db_registro.serialize(() => {
     db_registro.run('CREATE TABLE IF NOT EXISTS registro (id INTEGER PRIMARY KEY, tipo TEXT, scherer INT, codigo TEXT, usuario TEXT, numero TEXT, data DATA, hora TIME)')
 })
+
+//Cria tabela "config" com as colunas id, chave e valor
+db_config.serialize(() => {
+    db_config.run('CREATE TABLE IF NOT EXISTS config (id INTEGER PRIMARY KEY, chave TEXT, valor INT)')
+})
+
+const configs = {
+    adm: "",
+    range_inicial: "",
+    range_final: "",
+    telefonista: "",
+    adm2: "",
+    telefonista2: ""
+}
+
+async function atualizaConfigs() {
+    buscaAllConfigs().then((rows) => {
+        if (rows.length === 0) {
+            salvaConfig("adm", 0);
+            salvaConfig("range_inicial", 0);
+            salvaConfig("range_final", 0);
+            salvaConfig("telefonista", 0);
+            salvaConfig("adm2", 0);
+            salvaConfig("telefonista2", 0);
+            configs.adm = 0;
+            configs.range_inicial = 0;
+            configs.range_final = 0;
+            configs.telefonista = 0;
+            configs.adm2 = 0;
+            configs.telefonista2 = 0;
+            console.log(configs)
+            console.log("Configurações zeradas aguardando entrada.")
+        } else {
+            configs[rows[0].chave] = rows[0].valor;
+            configs[rows[1].chave] = rows[1].valor;
+            configs[rows[2].chave] = rows[2].valor;
+            configs[rows[3].chave] = rows[3].valor;
+            configs[rows[4].chave] = rows[4].valor;
+            configs[rows[5].chave] = rows[5].valor;
+            console.log(rows, configs)
+            console.log("Configurações atualizadas.")
+        }    
+    });
+}
+atualizaConfigs();
 
 
 //Main:
@@ -51,7 +96,7 @@ client.on('message', async msg => {
     if (formata(msg.body) === 'cadastrar' && msg.author === undefined) {
         console.log(logsView)
         let numero = msg.from.replace("@c.us", "");
-        if (numero <= rangeFinal && numero >= rangeIncial) { //Se o numero estiver dentro do range de ramais usando na FISA
+        if (numero <= configs.range_final && numero >= configs.range_inicial) { //Se o numero estiver dentro do range de ramais usando na FISA
             nomeTemp[msg.from] = 0;
             numero = formataTelefone(msg.from);        
             let mensagem = `Olá ${numero}, envie um nome para vincular a esse número no registro de usuários.`;
@@ -108,7 +153,7 @@ client.on('message', async msg => {
                 client.sendMessage(msg.from, "Esse nome contém caracteres especiais que não são permitidos para registro, tente outro.")
             }       
         } else {
-            client.sendMessage(msg.from, "O nome informado deve ter entre 5 a 20 caracteres, tente outro.");
+            client.sendMessage(msg.from, "O nome informado deve ter entre 6 a 20 caracteres, tente outro.");
         }
     } 
  
@@ -174,7 +219,8 @@ client.on('message', async msg => {
                     let mensagem = `${obj.tipo} *${obj.scherer}* *_${obj.usuario}_*\n${obj.codigo}\n\n`;
                     lista = lista + mensagem;   
                 });
-                client.sendMessage(numeroTelefonista, lista);
+                client.sendMessage(contato(configs.telefonista), lista);
+                client.sendMessage(contato(configs.telefonista2), lista);
             }).catch((err) => {
                 console.error(err)
             });
@@ -193,7 +239,8 @@ client.on('message', async msg => {
                     let mensagem = `${obj.tipo} *${obj.scherer}* *_${obj.usuario}_*\n${obj.codigo}\n\n`;
                     lista = lista + mensagem;   
                 });
-                client.sendMessage(numeroTelefonista, lista);
+                client.sendMessage(contato(configs.telefonista), lista);
+                client.sendMessage(contato(configs.telefonista2), lista);
             }).catch((err) => {
                 console.error(err)
             });
@@ -217,7 +264,8 @@ client.on('message', async msg => {
                 let mensagem = `${obj.tipo} *${obj.scherer}* *_${obj.usuario}_*\n${obj.codigo}\n\n`;
                 lista = lista + mensagem;   
             });
-            client.sendMessage(numeroTelefonista, lista);
+            client.sendMessage(contato(configs.telefonista), lista);
+            client.sendMessage(contato(configs.telefonista2), lista);
             }).catch((err) => {
                 console.error(err)
             });
@@ -229,7 +277,7 @@ client.on('message', async msg => {
     //se msg iniciar com "informe " (com espaço no final) para retornar a lista do dia (no formato xx/xx/xxxx):
     else if (formata(msg.body).startsWith('informe ') && msg.author === undefined) {
         console.log(logsView)
-        let dia = formata(msg.body).replace("informe ","");
+        let dia = formata(msg.body).replace("informe ","").trim();
         let datainforme = "";
         if (dia === "hoje") {
             datainforme = tempo("data");
@@ -244,11 +292,12 @@ client.on('message', async msg => {
             }
             datainforme = validaData(dia) ? dia : "invalido"; 
         }
-        if (datainforme !== "invalido") {
+        if (datainforme !== "invalido" && datainforme.length == 10) {
             buscaRegistro(datainforme).then((rows) => {
                 let lista = "📥 _*Lista de requisição*_ 📤\n\n";
                 console.log(rows)
                 if (rows.length !== 0) {
+                    
                     rows.forEach(obj => {
                         let mensagem = `${obj.tipo} *${obj.scherer}* *_${obj.usuario}_*\n${obj.codigo}\n\n`;
                         lista = lista + mensagem;   
@@ -268,15 +317,15 @@ client.on('message', async msg => {
     } 
 
     //foto scherer vendedor >>> comando na descrição da mensagem para enviar a foto para o vendedor informando o scherer da peça 
-    else if (msg.body.trim().startsWith("foto ") && msg.hasMedia && msg.author === undefined || msg.body.trim().startsWith("Foto ") && msg.hasMedia && msg.author === undefined) { 
+    else if ((msg.body.trim().startsWith("foto ") || msg.body.trim().startsWith("Foto ")) && msg.hasMedia && msg.author === undefined) { 
         console.log(logsView)
-        if (msg.from === numeroTelefonista) {
-            //forma de receber foto ou Foto sem alterar o nome recebido que é case sensetive
-            // Foto 19117 Gustavo S    |   foto 19117 Gustavo S
-            let mensagem = msg.body.substring(5).trim().split(" "); 
-            let scherer = mensagem[0];
-            let vendedor = msg.body.substring(5).trim().replace(scherer, "").trim();
+        if (msg.from === (contato(configs.telefonista) || contato(configs.telefonista2))) {
+            let splited = msg.body.trim().substring(5).split(" "); //19117 Gustavo S
+            let scherer = splited[0];
+            let vendedor = msg.body.trim().substring(5).replace(scherer, "").trim();
+            console.log(splited, "s:", scherer, "vend:", vendedor)
             buscaUsuario(vendedor).then(async (row) => {
+                console.log(row)
                 if (row?.numero !== undefined && isNaN(scherer) === false) {
                     let numero = row.numero + "@c.us";
                     const media = await msg.downloadMedia();
@@ -295,7 +344,7 @@ client.on('message', async msg => {
     else if (formata(msg.body).startsWith("msg ") && msg.author === undefined) {
         console.log(logsView)
         let vendedor = msg.body.substring(4).trim();
-        if (msg.from === numeroTelefonista) {
+        if (msg.from === (contato(configs.telefonista) || contato(configs.telefonista2))) {
             buscaUsuario(vendedor).then((row) => {
                 if (row?.numero !== undefined) {
                     let numero = row.numero + "@c.us";
@@ -330,7 +379,6 @@ client.on('message', async msg => {
         console.log(scherer)
         buscaRegistroPorScherer(scherer).then((rows) => {
             let lista = "📄 _*Últimas requisições:*_ 📄\n\n";
-            console.log(rows)
             if (rows.length !== 0) {
                 rows.forEach(obj => {
                     let mensagem = `*${obj.usuario}* _${obj.data} ${obj.hora}_\n\n`;
@@ -343,6 +391,78 @@ client.on('message', async msg => {
         }).catch((err) => { console.error(err)});  
     }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+    else if (formata(msg.body).startsWith("show ") && (contato(msg.from) == configs.adm || configs.adm == 0) ) {
+        console.log(logsView)
+        let chave = formata(msg.body).substring(5).trim();
+        let opcoesChave = ["adm", "range_incial", "range_final", "telefonista", "adm2", "telefonista2"];
+        if (opcoesChave.includes(chave)) {
+            buscaConfig(chave).then((row) => {
+                console.log(row)
+                if (row.valor == 0) {
+                    client.sendMessage(msg.from, `A chave *${chave}* ainda não está registrada.`)
+                } else {
+                    client.sendMessage(msg.from, `O valor da chave *${row.chave}* é *${row.valor}*`)
+                }
+            }).catch((err) => { console.error(err) });
+        } else {
+            client.sendMessage(msg.from, `A chave deve estar na lista de chaves disponíveis para uso.`)
+        }
+    }
+
+    else if (formata(msg.body).startsWith("set ") && (contato(msg.from) == configs.adm || configs.adm == 0)) {
+        console.log(logsView)
+        let splited = formata(msg.body).split(" ");
+        let chave = splited[1].trim();
+        let valor = splited[2].trim();
+        let opcoesChave = ["adm", "range_incial", "range_final", "telefonista", "adm2", "telefonista2"];
+        if (opcoesChave.includes(chave) && !isNaN(valor)) {
+            buscaConfig(chave).then((row) => {
+                if (row?.valor == 0) {
+                    alteraConfig(chave, valor).catch((err) => console.error(err));/////////
+                    client.sendMessage(msg.from, `A chave *${chave}* foi registrada com o valor *${valor}*`);
+                    atualizaConfigs();
+                } else {
+                    alteraConfig(chave, valor).catch((err) => console.error(err));
+                    client.sendMessage(msg.from, `A chave *${chave}* com valor *${row.valor}* agora possui o valor *${valor}*`);
+                    atualizaConfigs();
+                }
+            })
+        } else {
+            client.sendMessage(msg.from, `O valor informado deve ser apenas numérico e a chave deve estar na lista de chaves disponíveis para uso.`)
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
 
 });
 

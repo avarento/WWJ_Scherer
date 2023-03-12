@@ -4,7 +4,12 @@ const https = require('https');
 const fs = require('fs');
 const jsdom = require("jsdom");
 const { JSDOM } = jsdom;
-const { db_registro, db_usuarios, httpsAgent } = require('./database')
+const { db_registro, db_usuarios, db_config, httpsAgent } = require('./database')
+
+function contato(msgFrom) {
+    let from = msgFrom.toString().includes("@c.us") ? msgFrom.toString().replace("@c.us", "") : msgFrom.toString() + "@c.us";
+    return from;
+}
 
 //Função para salvar dois valores nas colunas numero e nome em usuarios
 async function salvaUsuario(numeroX, nomeX, dataX, horaX){
@@ -21,10 +26,10 @@ function formata(string) {
     return string.toLowerCase().trim();
 }
 
-//retorna data ou hora no formato necessário
+//retorna data ou hora no formato necessário (GMT-3 para adequar o servidor aws ao horário brasileiro)
 function tempo(datahora) {
     const dataServer = new Date();
-    const data =  dataServer.setDate(dataServer.getHours() - 3);
+    const data = new Date(dataServer.setHours(dataServer.getHours() - 3));
     if (datahora === "data") { 
         return new Intl.DateTimeFormat('pt-BR').format(data);
     } else if (datahora === "hora") { 
@@ -67,7 +72,7 @@ function formataTelefone(from) {
 //retorna em row as informações do nome ou numero [ nota para implementação futura: if (input.includes("@c.us")) {... ]
 function buscaUsuario(input) {
     return new Promise((resolve, reject) => {
-        let NoN = (Number.isNaN(input) ? 'nome' : 'numero') //NoN Name or Number
+        let NoN = (isNaN(input) ? 'nome' : 'numero') //NoN Name or Number
         let userQuery = `SELECT * FROM usuarios WHERE ${NoN} = ?`; //Usei template string pq qnd declarava duas variáveis por "?" não fazia uma requisição correta ¯\_(ツ)_/¯
         db_usuarios.get(userQuery, [input], (err, row) => {
             if (err) {
@@ -112,7 +117,7 @@ async function pesquisaScherer(scherer) {
     const pesquisa = {};
     pesquisa.codigo = document.querySelector("div> div > div > div > div > p.m-t-20")?.lastChild?.textContent.trim();
     pesquisa.descricao = document.querySelector("div > div > div > div > div > p.m-t-5")?.textContent
-    pesquisa.imgURL = document.querySelector("div > div > div > div > div > img")?.src
+    pesquisa.imgURL = document.querySelector("div > div > div > div > div > img")?.src.replace("_g", "");
     pesquisa.updown = (document.querySelector("#wrapper > div > div > div > h1")?.textContent === "Produtos" ? "up" : "down");
     pesquisa.scherer = scherer;
     pesquisa.status = "";
@@ -136,7 +141,41 @@ async function pesquisaScherer(scherer) {
     }        
 }
 
+async function buscaConfig(chave) {
+    return new Promise((resolve, reject) => {
+        db_config.get('SELECT * FROM config WHERE chave = ?', [chave], (err, rows) => {
+            if(err) {
+                reject(err);
+            }
+            resolve(rows);
+        });
+    });
+}
+
+async function salvaConfig(chaveX, valorX) {
+    return db_config.run('INSERT INTO config (chave, valor) VALUES (?, ?)', [chaveX, valorX]);
+}
+
+async function alteraConfig(chaveX, valorX) {
+    return db_config.run(`UPDATE config SET valor = "${valorX}" WHERE chave = "${chaveX}"`);
+}
+
+async function buscaAllConfigs() {
+    return new Promise((resolve, reject) => {
+        db_config.all('SELECT * FROM config', (err, rows) => {
+            if(err) {
+                reject(err);
+            }
+            resolve(rows);
+        });
+    });
+}
+
+
+
+
 module.exports = {
+    contato: contato,
     formata: formata,
     tempo: tempo, 
     validaString: validaString,
@@ -146,5 +185,9 @@ module.exports = {
     buscaUsuario: buscaUsuario, 
     pesquisaScherer: pesquisaScherer,
     salvaUsuario: salvaUsuario,
-    salvaRegistro: salvaRegistro
+    salvaRegistro: salvaRegistro,
+    buscaConfig: buscaConfig,
+    salvaConfig: salvaConfig,
+    alteraConfig: alteraConfig,
+    buscaAllConfigs: buscaAllConfigs
 };

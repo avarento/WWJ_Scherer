@@ -5,6 +5,7 @@ const fs = require('fs');
 //Setando recursos do DB sqlite;
 var db_usuarios = new sqlite3.Database('usuarios.db');
 var db_registro = new sqlite3.Database('registro.db');
+var db_config = new sqlite3.Database('config.db')
 
 //Configuração manual para o Axios aceitar o certificado de segurança do site da Scherer via Https Agent. 
 const httpsAgent = new https.Agent({
@@ -22,6 +23,7 @@ let opcoes = ["s", "n", "f", "m"];
   module.exports = {
     db_registro: db_registro,
     db_usuarios: db_usuarios,
+    db_config: db_config,
     httpsAgent: httpsAgent,
     nomeTemp: nomeTemp,
     listaTemp: listaTemp,
