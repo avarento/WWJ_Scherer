@@ -6,14 +6,13 @@ const fs = require('fs');
 const jsdom = require("jsdom");
 const { JSDOM } = jsdom;
 const { contato, formata, tempo, validaString, formataTelefone, buscaRegistro, buscaRegistroPorScherer, buscaUsuario, pesquisaScherer, salvaRegistro, salvaUsuario, salvaConfig, buscaConfig, alteraConfig, buscaAllConfigs } = require('./scherer_modules/functions');
-const { numeroTelefonista, rangeIncial, rangeFinal } = require('./scherer_modules/settings'); //ENCERRAR
 const { db_registro, db_usuarios, db_config, httpsAgent, nomeTemp, listaTemp, msgTemp, msgTempTel, opcoes } = require('./scherer_modules/database');
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const client = new Client({ 
     authStrategy: new LocalAuth(),
     puppeteer: { 
-    //product: "chrome",   //(product e executablePath apenas configurações para o servidor AWS.)
-    //executablePath: "/usr/bin/chromium-browser",
+    product: "chrome",   //(product e executablePath apenas configurações para o servidor AWS.)
+    executablePath: "/usr/bin/chromium-browser",
     headless: true,
     handleSIGINT: false,
     args: [
