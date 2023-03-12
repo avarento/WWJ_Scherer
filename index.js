@@ -51,15 +51,15 @@ async function atualizaConfigs() {
             salvaConfig("adm", 0);
             salvaConfig("range_inicial", 0);
             salvaConfig("range_final", 0);
-            salvaConfig("telefonista", 0);
+            salvaConfig("telefonista", 1);
             salvaConfig("adm2", 0);
-            salvaConfig("telefonista2", 0);
+            salvaConfig("telefonista2", 1);
             configs.adm = 0;
             configs.range_inicial = 0;
             configs.range_final = 0;
-            configs.telefonista = 0;
+            configs.telefonista = 1;
             configs.adm2 = 0;
-            configs.telefonista2 = 0;
+            configs.telefonista2 = 1;
             console.log(configs)
             console.log("Configurações zeradas aguardando entrada.")
         } else {
@@ -390,20 +390,6 @@ client.on('message', async msg => {
         }).catch((err) => { console.error(err)});  
     }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-
-
-
-
-
-
-
-
-
-
     else if (formata(msg.body).startsWith("show ") && (contato(msg.from) == configs.adm || configs.adm == 0) ) {
         console.log(logsView)
         let chave = formata(msg.body).substring(5).trim();
@@ -445,24 +431,13 @@ client.on('message', async msg => {
         }
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
+    else if (msg.body === "reset_all_system") {
+        client.sendMessage(msg.from, "Reiniciando sistema --force");
+        console.log("--FORCE Encerrando cliente...");
+        await client.destroy();
+        process.exit(0);
+    }
+  
 });
 
 process.on("SIGINT", async () => {
