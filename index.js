@@ -186,9 +186,9 @@ client.on('message', async msg => {
                             }).catch((erroimg) => { console.erro(erroimg, "erro ao fazer a busca da imagem.")});
                             chat.sendMessage(media, {caption: mensagem});
                             listaTemp[msg.from] = {
-                                usuario: [nome],
-                                scherer: [pesquisa.scherer],
-                                cod: [pesquisa.codigo]                    
+                                usuario: nome,
+                                scherer: pesquisa.scherer,
+                                cod: pesquisa.codigo                    
                             }
                             console.log(listaTemp[msg.from])
                         }
@@ -218,8 +218,9 @@ client.on('message', async msg => {
                     let mensagem = `${obj.tipo} *${obj.scherer}* *_${obj.usuario}_*\n${obj.codigo}\n\n`;
                     lista = lista + mensagem;   
                 });
+                
                 client.sendMessage(contato(configs.telefonista), lista);
-                client.sendMessage(contato(configs.telefonista2), lista);
+
             }).catch((err) => {
                 console.error(err)
             });
@@ -239,7 +240,6 @@ client.on('message', async msg => {
                     lista = lista + mensagem;   
                 });
                 client.sendMessage(contato(configs.telefonista), lista);
-                client.sendMessage(contato(configs.telefonista2), lista);
             }).catch((err) => {
                 console.error(err)
             });
@@ -264,7 +264,6 @@ client.on('message', async msg => {
                 lista = lista + mensagem;   
             });
             client.sendMessage(contato(configs.telefonista), lista);
-            client.sendMessage(contato(configs.telefonista2), lista);
             }).catch((err) => {
                 console.error(err)
             });
@@ -348,8 +347,8 @@ client.on('message', async msg => {
                 if (row?.numero !== undefined) {
                     let numero = row.numero + "@c.us";
                     msgTempTel[msg.from] = {
-                        vendedor: [vendedor],
-                        numero: [numero]
+                        vendedor: vendedor,
+                        numero: numero
                     }
                     client.sendMessage(msg.from, "Qual mensagem deseja enviar?");
                 } else {
